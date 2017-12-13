@@ -276,6 +276,7 @@ public class DefaultDockerClient implements DockerClient, Closeable {
   // ==========================================================================
 
   private static final String UNIX_SCHEME = "unix";
+  private static final String NAMED_PIPE_SCHEME = "npipe";
 
   private static final Logger log = LoggerFactory.getLogger(DefaultDockerClient.class);
 
@@ -357,7 +358,10 @@ public class DefaultDockerClient implements DockerClient, Closeable {
    * @param uri The docker rest api uri.
    */
   public DefaultDockerClient(final String uri) {
-    this(URI.create(uri.replaceAll("^unix:///", "unix://localhost/")));
+    this(URI.create(uri.replaceAll("^unix:///", "unix://localhost/")
+        .replaceAll("^npipe:////\\.", "npipe://localhost/")
+        )
+    );
   }
 
   /**
@@ -396,6 +400,8 @@ public class DefaultDockerClient implements DockerClient, Closeable {
 
     if (originalUri.getScheme().equals(UNIX_SCHEME)) {
       this.uri = UnixConnectionSocketFactory.sanitizeUri(originalUri);
+    } else if (originalUri.getScheme().equals(NAMED_PIPE_SCHEME)) {
+      this.uri = WindowsNamedPipeSocketFactory.sanitizeUri(originalUri);
     } else {
       this.uri = originalUri;
     }
@@ -485,6 +491,8 @@ public class DefaultDockerClient implements DockerClient, Closeable {
 
     if (builder.uri.getScheme().equals(UNIX_SCHEME)) {
       registryBuilder.register(UNIX_SCHEME, new UnixConnectionSocketFactory(builder.uri));
+    } else if (builder.uri.getScheme().equals(NAMED_PIPE_SCHEME)) {
+      registryBuilder.register(NAMED_PIPE_SCHEME, new WindowsNamedPipeSocketFactory(builder.uri));
     }
 
     return registryBuilder.build();
@@ -2793,7 +2801,8 @@ public class DefaultDockerClient implements DockerClient, Closeable {
     final Optional<DockerCertificatesStore> certs = DockerCertificates.builder()
         .dockerCertPath(dockerCertPath).build();
 
-    if (endpoint.startsWith(UNIX_SCHEME + "://")) {
+    if (endpoint.startsWith(UNIX_SCHEME + "://")
+        || endpoint.startsWith(NAMED_PIPE_SCHEME + "://")) {
       builder.uri(endpoint);
     } else {
       final String stripped = endpoint.replaceAll(".*://", "");

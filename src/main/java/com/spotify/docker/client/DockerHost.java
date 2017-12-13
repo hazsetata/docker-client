@@ -61,6 +61,7 @@ public class DockerHost {
   private static SystemDelegate systemDelegate = defaultSystemDelegate;
 
   private static final String DEFAULT_UNIX_ENDPOINT = "unix:///var/run/docker.sock";
+  private static final String DEFAULT_WINDOWS_ENDPOINT = "npipe:////./pipe/docker_engine";
   private static final String DEFAULT_ADDRESS = "localhost";
   private static final int DEFAULT_PORT = 2375;
 
@@ -72,7 +73,7 @@ public class DockerHost {
   private final String certPath;
 
   private DockerHost(final String endpoint, final String certPath) {
-    if (endpoint.startsWith("unix://")) {
+    if (endpoint.startsWith("unix://") || endpoint.startsWith("npipe://")) {
       this.port = 0;
       this.address = DEFAULT_ADDRESS;
       this.host = endpoint;
@@ -187,6 +188,8 @@ public class DockerHost {
     final String os = osName.toLowerCase(Locale.ENGLISH);
     if (os.equalsIgnoreCase("linux") || os.contains("mac")) {
       return DEFAULT_UNIX_ENDPOINT;
+    } else if (os.contains("windows")) {
+      return DEFAULT_WINDOWS_ENDPOINT;
     } else {
       return DEFAULT_ADDRESS + ":" + defaultPort();
     }
